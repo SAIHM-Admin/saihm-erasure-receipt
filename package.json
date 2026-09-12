@@ -1,6 +1,6 @@
 {
   "name": "@saihm/erasure-receipt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tamper-evident, verifiable cryptographic-erasure receipts (GDPR Art. 17) for SAIHM: build a receipt from a seal + forget, and verify any receipt you are handed. Zero-dependency.",
   "type": "module",
   "license": "Apache-2.0",

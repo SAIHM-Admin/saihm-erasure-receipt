@@ -35,3 +35,8 @@ These are the cases where the library reports a weaker result instead of a conve
   than verifying against its own altered contents.
 
 [0.1.0]: https://github.com/SAIHM-Admin/saihm-erasure-receipt/releases/tag/v0.1.0
+
+## 0.1.1 — 2026-09-12
+
+- docs: describe the dependency posture without naming the implementation module (README and package description). No code change.
+
