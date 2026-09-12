@@ -1,0 +1,47 @@
+{
+  "name": "@saihm/erasure-receipt",
+  "version": "0.1.0",
+  "description": "Tamper-evident, verifiable cryptographic-erasure receipts (GDPR Art. 17) for SAIHM: build a receipt from a seal + forget, and verify any receipt you are handed. Zero-dependency (node:crypto only).",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "SAIHM",
+  "main": "./src/receipt.mjs",
+  "types": "./src/receipt.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/receipt.d.ts",
+      "import": "./src/receipt.mjs"
+    }
+  },
+  "files": [
+    "src/receipt.mjs",
+    "src/receipt.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "saihm",
+    "gdpr",
+    "erasure",
+    "right-to-be-forgotten",
+    "crypto-shred",
+    "receipt",
+    "compliance",
+    "audit",
+    "tamper-evident"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SAIHM-Admin/saihm-erasure-receipt.git"
+  },
+  "homepage": "https://saihm.coti.global",
+  "publishConfig": {
+    "access": "public"
+  }
+}

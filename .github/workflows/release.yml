@@ -1,0 +1,87 @@
+name: release
+
+# Publishes to npm with provenance via OIDC trusted publishing when a GitHub
+# Release is published. No npm token is used — authentication is OIDC, and npm
+# generates provenance attestations automatically under trusted publishing.
+#
+# PREREQUISITE (one-time, on npmjs.com): register this repo+workflow as a
+# Trusted Publisher for @saihm/erasure-receipt — package Settings -> Trusted Publisher:
+#   Organization or user : SAIHM-Admin
+#   Repository           : saihm-erasure-receipt
+#   Workflow filename    : release.yml
+#   Allowed actions      : npm publish
+#
+# THE FIRST PUBLISH CANNOT USE THIS WORKFLOW. A Trusted Publisher can only be
+# configured on a package that already exists on the registry, so 0.1.0 must be
+# published with a token; this workflow governs 0.1.1 onward. Supporting OIDC for
+# an initial version is an open feature request (npm/cli#8544), not a setting.
+# Our own history matches: @saihm/mcp-server-pro 0.1.0-0.1.5 carry no provenance
+# attestation and 0.1.9 onward do, even though all of them post-date trusted
+# publishing going GA — the switch happened when the package existed, not when we
+# got around to it. Do not read a missing attestation on 0.1.0 as a misconfiguration.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write   # required for OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately NO registry-url — setup-node's registry-url writes an .npmrc
+      # with a placeholder NODE_AUTH_TOKEN that shadows OIDC, and npm then never
+      # reaches trusted publishing. access:public comes from package.json.
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'            # >= 22.14.0 required for OIDC
+
+      - name: Use npm >= 11.5.1 (required for OIDC trusted publishing)
+        run: npm install -g npm@latest
+
+      # The lockfile is gated as well as package.json. -pro shipped a tag whose
+      # package-lock.json still named the previous version at both fields, because a
+      # hand-edit of package.json does not touch the lockfile the way `npm version` does.
+      - name: Verify package + lockfile versions match the release tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          LOCK="$(node -p "require('./package-lock.json').version")"
+          LOCKPKG="$(node -p "require('./package-lock.json').packages[''].version")"
+          echo "package.json=$PKG  package-lock.json=$LOCK/$LOCKPKG  release-tag=$TAG"
+          test "$PKG"     = "$TAG" || { echo "::error::package.json version mismatch ($PKG != $TAG)"; exit 1; }
+          test "$LOCK"    = "$TAG" || { echo "::error::package-lock.json version mismatch ($LOCK != $TAG)"; exit 1; }
+          test "$LOCKPKG" = "$TAG" || { echo "::error::package-lock.json packages[''].version mismatch ($LOCKPKG != $TAG)"; exit 1; }
+          grep -q "^## \[$TAG\]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## [$TAG]' heading"; exit 1; }
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      # Prove the PACKED artifact is what a consumer actually resolves, before the
+      # irreversible publish. `npm test` runs against the working tree; `files` in
+      # package.json means the tarball is a strict subset of it, so a broken `exports`
+      # or a file omitted from `files` is invisible until someone installs it.
+      - name: Clean-room install from the packed tarball
+        run: |
+          set -euo pipefail
+          TGZ="$(npm pack --silent | tail -1)"
+          mkdir -p /tmp/cleanroom && cd /tmp/cleanroom
+          npm init -y >/dev/null
+          npm i "$GITHUB_WORKSPACE/$TGZ" >/dev/null
+          node -e "import('@saihm/erasure-receipt').then(m=>{
+            const need=['buildErasureReceipt','verifyReceipt','RECEIPT_SCHEMA'];
+            const miss=need.filter(k=>!(k in m));
+            if(miss.length){console.error('missing exports:',miss.join(','));process.exit(1);}
+            console.log('clean-room exports OK:',need.join(', '));
+          })"
+
+      - name: Publish (OIDC trusted publishing — provenance is automatic)
+        run: npm publish
