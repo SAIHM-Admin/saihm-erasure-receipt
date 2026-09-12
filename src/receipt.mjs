@@ -15,13 +15,19 @@ import { createHash } from 'node:crypto';
 
 export const RECEIPT_SCHEMA = 'saihm.erasure-receipt/v1';
 
+// The protocol epoch is counted in hours; these bound what a receipt will accept as an erasure
+// time. Anything outside the window falls back to the current time rather than being trusted.
+const SECONDS_PER_EPOCH = 3600;
+const EPOCH_FLOOR_SEC = Date.UTC(2020, 0, 1) / 1000;
+const EPOCH_SKEW_SEC = 86400;
+
 /**
  * Build an erasure receipt from the protocol's seal + forget results.
  *
  * @param {object} a
  * @param {string} a.cellId            - public id of the erased record
  * @param {string|null} [a.commitmentHash] - the record's public commitment (endpoint-reported; offline it equals the client-sealed sha256 of the ciphertext). Verify it via verifyEnvelope() if you must trust it on a hosted endpoint
- * @param {object} a.forget            - the `forget()` result ({ complete, steps:[{success}], epoch })
+ * @param {object} a.forget            - the `forget()` result ({ complete, steps:[{success}], epoch }); `epoch` is the SAIHM protocol epoch, in hours
  * @param {number} a.copiesRemaining   - records with this id still readable after erasure (verified by re-reading)
  * @param {string} a.endpoint          - 'local blind sandbox' or the hosted endpoint host
  * @returns {object} the receipt, including a `receiptHash` that makes it tamper-evident
@@ -33,13 +39,22 @@ export function buildErasureReceipt({ cellId, commitmentHash = null, forget, cop
   }
   const steps = Array.isArray(forget?.steps) ? forget.steps : [];
   const keyDestroyed = Boolean(forget?.complete) && steps.length > 0 && steps.every((s) => s?.success === true);
-  const epochSec = Number(forget?.epoch);
   const nowSec = Math.floor(Date.now() / 1000);
-  // Accept only a strictly-positive, in-range epoch (unix seconds). Anything else -- null/""/0
-  // (which Number() coerces to 0), negative, NaN, Infinity, or beyond the Date range -- fails
-  // closed to now, so a malformed or hostile epoch from a live endpoint never throws and never
-  // yields a misleading 1970 timestamp on an otherwise-valid erasure receipt.
-  const safeEpoch = Number.isFinite(epochSec) && epochSec > 0 && epochSec < 8.64e12 ? epochSec : nowSec;
+  // `forget.epoch` is the SAIHM protocol epoch: HOURS since the unix epoch. That is what the
+  // blind operator endpoint reports and what the runtime itself multiplies by an hour to get
+  // milliseconds. Reading it as seconds lands the receipt in 1970 while every other field still
+  // checks out -- a receipt that verifies true and misstates when the erasure happened, which is
+  // the one outcome this artifact must never produce.
+  const epochSec = Number(forget?.epoch) * SECONDS_PER_EPOCH;
+  // Fail closed to now unless the result is a plausible erasure time. The floor is what makes the
+  // 1970 case unreachable; the ceiling catches the opposite mistake, a unix-seconds value passed
+  // in by hand, which overshoots by orders of magnitude. Either unit error degrades to "now"
+  // rather than to a date that would misstate the erasure. null/""/0, negative, NaN and Infinity
+  // all fall outside the window too, so a malformed or hostile epoch never throws.
+  const safeEpoch =
+    Number.isFinite(epochSec) && epochSec >= EPOCH_FLOOR_SEC && epochSec <= nowSec + EPOCH_SKEW_SEC
+      ? epochSec
+      : nowSec;
   const erasedAt = new Date(safeEpoch * 1000).toISOString();
 
   const body = {

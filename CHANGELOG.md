@@ -24,9 +24,13 @@ These are the cases where the library reports a weaker result instead of a conve
 - **A surviving copy.** A non-zero `copiesRemaining` makes the receipt non-irreversible and
   invalid. Destroying one key while another copy of the record remains readable is not erasure,
   and a receipt that said otherwise would be worse than no receipt.
-- **A malformed epoch.** `0`, negative, `NaN`, `Infinity`, `null` and out-of-range values fail
-  closed to approximately now rather than to 1970 — an erasure timestamped at the Unix epoch
-  reads as a very old, already-satisfied request.
+- **An implausible erasure time.** `forget.epoch` is the SAIHM protocol epoch, counted in
+  **hours** — what the blind operator endpoint reports. Anything that does not resolve to a
+  plausible erasure time fails closed to approximately now: `0`, negative, `NaN`, `Infinity`,
+  `null`, and either unit mistake — a protocol epoch read as seconds (which would land in 1970)
+  or unix seconds passed by hand (which would overshoot into the far future). An erasure
+  timestamped at the Unix epoch reads as a very old, already-satisfied request, so a receipt
+  that verified true while carrying that date would be worse than one that failed outright.
 - **A mutated body.** The stored hash is recomputed on verify, so an edited receipt fails rather
   than verifying against its own altered contents.
 

@@ -22,6 +22,7 @@ const receipt = buildErasureReceipt({
   cellId,           // the erased record's public id
   commitmentHash,   // the record's public commitment (e.g. remember().commitmentHash)
   forget,           // the forget() result: { complete, steps: [{ success }], epoch }
+                    //   epoch is the SAIHM protocol epoch, in HOURS (as the endpoint reports it)
   copiesRemaining,  // records with this id still readable after erasure (you verify == 0)
   endpoint,         // 'local blind sandbox' or your hosted endpoint host
 });

@@ -9,7 +9,7 @@ export interface ForgetResult {
   complete?: boolean;
   /** Per-operation steps; the wrapped key is treated as destroyed only if every step succeeded. */
   steps?: Array<{ success?: boolean }>;
-  /** Unix epoch (seconds) of the erasure, as reported by the endpoint. */
+  /** SAIHM protocol epoch (HOURS since the unix epoch) of the erasure, as reported by the endpoint. */
   epoch?: number | string | null;
 }
 

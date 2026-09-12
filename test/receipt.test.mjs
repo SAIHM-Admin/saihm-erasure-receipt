@@ -5,7 +5,10 @@ import assert from 'node:assert/strict';
 
 import { buildErasureReceipt, verifyReceipt, RECEIPT_SCHEMA } from '../src/receipt.mjs';
 
-const okForget = (epoch = 1_700_000_000) => ({ complete: true, steps: [{ success: true }], epoch });
+// `epoch` is the SAIHM protocol epoch: HOURS since the unix epoch, matching what the blind
+// operator endpoint reports. A unix-seconds value here is the unit mistake these tests guard.
+const EPOCH_HOURS = 472_000; // 2023-11-05T16:00:00Z
+const okForget = (epoch = EPOCH_HOURS) => ({ complete: true, steps: [{ success: true }], epoch });
 
 const validArgs = (over = {}) => ({
   cellId: '9c29fce8abcd',
@@ -84,9 +87,9 @@ test('buildErasureReceipt: a negative or non-integer copiesRemaining throws', ()
   assert.throws(() => buildErasureReceipt(validArgs({ copiesRemaining: 1.5 })), /non-negative integer/);
 });
 
-test('erasedAt reflects a valid endpoint epoch', () => {
-  const r = buildErasureReceipt(validArgs({ forget: okForget(1_700_000_000) }));
-  assert.equal(r.erasedAt, new Date(1_700_000_000 * 1000).toISOString());
+test('erasedAt reflects a valid endpoint epoch (protocol epoch, in hours)', () => {
+  const r = buildErasureReceipt(validArgs({ forget: okForget(EPOCH_HOURS) }));
+  assert.equal(r.erasedAt, new Date(EPOCH_HOURS * 3600 * 1000).toISOString());
 });
 
 test('a malformed epoch fails closed to ~now (never a misleading 1970 timestamp)', () => {
@@ -107,4 +110,29 @@ test('verifyReceipt: wrong schema is reported', () => {
 
 test('verifyReceipt: a non-object is rejected without throwing', () => {
   assert.deepEqual(verifyReceipt(null), { valid: false, reasons: ['not an object'] });
+});
+
+test('a protocol epoch is NOT read as unix seconds (the 1970 receipt)', () => {
+  // Regression: the endpoint reports hours, this module read them as seconds, so a real erasure
+  // produced a receipt dated 1970 that still verified true. A receipt that verifies and misstates
+  // when the erasure happened is worse than one that fails outright, so the year is asserted here
+  // rather than only the verify() result.
+  const r = buildErasureReceipt(validArgs({ forget: okForget(EPOCH_HOURS) }));
+  assert.equal(new Date(r.erasedAt).getUTCFullYear(), 2023);
+  assert.ok(verifyReceipt(r).valid);
+});
+
+test('a unix-seconds epoch passed by hand fails closed to ~now, not to the far future', () => {
+  // The opposite unit mistake overshoots by orders of magnitude; it must degrade to now rather
+  // than stamp the receipt with a year that is obviously wrong but still verifies.
+  const r = buildErasureReceipt(validArgs({ forget: okForget(1_700_000_000) }));
+  const year = new Date(r.erasedAt).getUTCFullYear();
+  assert.ok(year >= 2026 && year < 2100, `unix-seconds epoch -> erasedAt year ${year}`);
+});
+
+test('a bigint epoch from the endpoint is accepted', () => {
+  // BlindForgetResult.epoch is a bigint; Number() handles it, but Number.isFinite(bigint) is
+  // false, so passing the raw value must not silently fall back to now.
+  const r = buildErasureReceipt(validArgs({ forget: { complete: true, steps: [{ success: true }], epoch: BigInt(EPOCH_HOURS) } }));
+  assert.equal(r.erasedAt, new Date(EPOCH_HOURS * 3600 * 1000).toISOString());
 });
