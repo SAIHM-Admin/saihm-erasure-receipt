@@ -4,6 +4,12 @@ All notable changes to `@saihm/erasure-receipt` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-09-12
+
+### Changed
+
+- README and package description now state the dependency posture without naming the implementation module. No code change.
+
 ## [0.1.0] - 2026-09-12
 
 First release. Zero-dependency library for building and verifying tamper-evident
@@ -35,8 +41,4 @@ These are the cases where the library reports a weaker result instead of a conve
   than verifying against its own altered contents.
 
 [0.1.0]: https://github.com/SAIHM-Admin/saihm-erasure-receipt/releases/tag/v0.1.0
-
-## 0.1.1 — 2026-09-12
-
-- docs: describe the dependency posture without naming the implementation module (README and package description). No code change.
-
+[0.1.1]: https://github.com/SAIHM-Admin/saihm-erasure-receipt/releases/tag/v0.1.1
