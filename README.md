@@ -3,6 +3,8 @@
 **Prove a record was erased — not hidden.** Build and verify tamper-evident **cryptographic-erasure
 receipts** (GDPR Art. 17) for [SAIHM](https://saihm.coti.global). Zero runtime dependencies.
 
+**New to SAIHM?** [Watch the 6-minute overview](https://saihm.net/overview) (captions and transcript), or [read the SAIHM manual (PDF)](https://saihm.net/manual).
+
 SAIHM erases a record by destroying the *wrapped key* that decrypts it: the stored ciphertext
 becomes unrecoverable noise, so the record is *gone, not merely de-indexed*. This library turns the
 protocol's own seal + `forget` results into a small, portable receipt a compliance reviewer can
