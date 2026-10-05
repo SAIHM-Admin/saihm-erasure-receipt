@@ -72,7 +72,7 @@ the endpoint only ever holds ciphertext).
 
 - [`@saihm/client-pro`](https://www.npmjs.com/package/@saihm/client-pro) — the sealing client that
   produces the `remember` / `forget` results this receipt is built from.
-- Runnable demo + all SAIHM demos: <https://citw2.github.io/saihm-demos/>.
+- Runnable demo + all SAIHM demos: <https://saihm-admin.github.io/saihm-demos/>.
 - Join the protocol: <https://saihm.coti.global/join>.
 
 ## License
